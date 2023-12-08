@@ -1,39 +1,58 @@
 import psutil
-import time
+import tkinter as tk
+from tkinter import ttk
+from tkinter.messagebox import *
 
 
-# Fonction pour collecter les données CPU et mémoire
-def collect_data(interval=5):
-    data_log = []  # Pour stocker les données collectées
+class MonitorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Monitor")
 
-    while True:
-        # Collecte des informations sur l'utilisation du CPU et de la mémoire
-        cpu_usage = psutil.cpu_percent(interval=1)
-        mem_usage = psutil.virtual_memory().percent
-        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        # Étiquettes d'affichage
+        self.ram_label = ttk.Label(root, text="Mémoire: 0%")
+        self.ram_label.pack(pady=10)
+        self.cpu_label = ttk.Label(root, text="CPU: 0%")
+        self.cpu_label.pack(pady=10)
 
-        # Ajout des données collectées au journal
-        data_log.append({'timestamp': timestamp, 'cpu_usage': cpu_usage, 'mem_usage': mem_usage})
+        # Entrées pour les seuils
+        self.memory_threshold_var = tk.IntVar()
+        self.memory_threshold_var.set(80)  # Valeur par défaut
+        self.cpu_threshold_var = tk.IntVar()
+        self.cpu_threshold_var.set(80)  # Valeur par défaut
 
-        # Vérification des seuils et envoi de notifications si dépassés
-        if cpu_usage > cpu_threshold:
-            notify(f"CPU threshold exceeded! Usage: {cpu_usage}%")
+        memory_entry = ttk.Entry(root, textvariable=self.memory_threshold_var, width=5)
+        memory_entry.pack(side=tk.LEFT, padx=5)
+        ttk.Label(root, text="% RAM").pack(side=tk.LEFT)
 
-        if mem_usage > mem_threshold:
-            notify(f"Memory threshold exceeded! Usage: {mem_usage}%")
+        cpu_entry = ttk.Entry(root, textvariable=self.cpu_threshold_var, width=5)
+        cpu_entry.pack(side=tk.LEFT, padx=5)
+        ttk.Label(root, text="% CPU").pack(side=tk.LEFT)
 
-        # Pause pour respecter l'intervalle de collecte
-        time.sleep(interval)
+        # Bouton de mise à jour des seuils
+        update_button = ttk.Button(root, text="Mettre à jour les seuils", command=self.update_threshold)
+        update_button.pack(pady=10)
 
-# Fonction pour notifier l'utilisateur (exemple ici avec un print)
-def notify(message):
-    print(f"Notification: {message}")
+        # Étiquette pour afficher les seuils actuels
+        self.threshold_label = ttk.Label(root, text=f'Seuil RAM: {self.memory_threshold_var.get()}% | Seuil CPU: {self.cpu_threshold_var.get()}%')
+        self.threshold_label.pack()
+
+        # Mise à jour initiale des étiquettes
+        self.update_labels()
+
+    def update_labels(self):
+        memory_usage = psutil.virtual_memory().percent
+        cpu_usage = psutil.cpu_percent(interval=None)
+        self.ram_label.config(text=f'Mémoire: {memory_usage}%')
+        self.cpu_label.config(text=f'CPU: {cpu_usage}%')
+
+        self.root.after(1000, self.update_labels)  # Met à jour toutes les 1000 ms (1 seconde)
+
+    def update_threshold(self):
+        self.threshold_label.config(text=f'Seuil RAM: {self.memory_threshold_var.get()}% | Seuil CPU: {self.cpu_threshold_var.get()}%')
 
 
-# Configurations initiales
-cpu_threshold = 10  # Seuil CPU en pourcentage
-mem_threshold = 60  # Seuil mémoire en pourcentage
-
-# Début de la collecte de données en temps réel
-collect_data(interval=5)
-
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = MonitorApp(root)
+    root.mainloop()
